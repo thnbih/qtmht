@@ -1,0 +1,107 @@
+version: "3.7"
+
+x-haproxy-defaults: &haproxy-service
+  image: "haproxy:latest"
+  volumes:
+      - "./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro"
+
+x-keepalived-defaults: &keepalived-service
+  image: "osixia/keepalived:latest"
+  cap_add:
+    - NET_ADMIN
+    - NET_BROADCAST
+    - NET_RAW
+  environment:
+    KEEPALIVED_COMMAND_LINE_ARGUMENTS: >-
+      --log-detail
+
+networks:
+  vtnet:
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+
+services:
+
+  keepalived-a:
+    <<: *keepalived-service
+    network_mode: host
+    volumes:
+      - "./keepalived/proxy-a/keepalived.conf:/usr/local/etc/keepalived/keepalived.conf:ro"
+
+  keepalived-b:
+    <<: *keepalived-service
+    network_mode: host
+    volumes:
+      - "./keepalived/proxy-b/keepalived.conf:/usr/local/etc/keepalived/keepalived.conf:ro"
+
+  haproxy-a:
+    <<: *haproxy-service
+    networks:
+      vtnet:
+        ipv4_address: 172.20.0.50
+        aliases:
+          - haproxy-a
+
+  haproxy-b:
+    <<: *haproxy-service
+    networks:
+      vtnet:
+        ipv4_address: 172.20.0.60
+        aliases:
+          - haproxy-b
+
+  web-backend-a:
+    build:
+      context: ./web-backend
+      dockerfile: Dockerfile
+    networks:
+      vtnet:
+        aliases:
+          - web-backend
+    ports:
+      - "5000:5000"  # Để kiểm tra trực tiếp backend nếu cần
+
+  web-backend-b:
+    build:
+      context: ./web-backend
+      dockerfile: Dockerfile
+    networks:
+      vtnet:
+        aliases:
+          - web-backend
+    ports:
+      - "5001:5000"  # Để kiểm tra trực tiếp backend nếu cần
+
+  web-backend-c:
+    build:
+      context: ./web-backend
+      dockerfile: Dockerfile
+    networks:
+      vtnet:
+        aliases:
+          - web-backend-c
+    ports:
+      - "5002:5000"  # Để kiểm tra trực tiếp backend nếu cần
+
+  web-backend-d:
+    build:
+      context: ./web-backend
+      dockerfile: Dockerfile
+    networks:
+      vtnet:
+        aliases:
+          - web-backend-d
+    ports:
+      - "5003:5000"  # Để kiểm tra trực tiếp backend nếu cần
+
+  web-frontend:
+    build:
+      context: ./web-frontend
+      dockerfile: Dockerfile
+    networks:
+      vtnet:
+        aliases:
+          - web-frontend
+    ports:
+      - "3000:80"  # Để kiểm tra trực tiếp frontend nếu cần
